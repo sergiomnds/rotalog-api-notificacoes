@@ -14,7 +14,8 @@ INSERT INTO templates_notificacao (tipo, canal, assunto_template, corpo_template
 ('CNH_VENCIDA', 'email', 'ALERTA: CNH vencida - Motorista {{nome}}', 'ATENÇÃO: A CNH do motorista {{nome}} está vencida.\n\nVencimento: {{data_vencimento}}\nCNH: {{numero_cnh}}\n\nO motorista deve ser afastado até regularização.\n\nEquipe RotaLog', true),
 ('VEICULO_DESATIVADO', 'email', 'Veículo desativado: {{placa}}', 'O veículo {{placa}} foi desativado no sistema.\n\nMotivo: {{motivo}}\nData: {{data}}\n\nEquipe RotaLog', true),
 ('ALERTA_MANUTENCAO', 'sms', NULL, 'RotaLog: Manutenção agendada para veículo {{placa}} em {{data_agendada}}. Verifique o sistema.', true),
-('ENTREGA_CONCLUIDA', 'sms', NULL, 'RotaLog: Sua entrega {{numero_pedido}} foi entregue com sucesso!', true);
+('ENTREGA_CONCLUIDA', 'sms', NULL, 'RotaLog: Sua entrega {{numero_pedido}} foi entregue com sucesso!', true),
+('ALERTA_MANUTENCAO_PREVENTIVA', 'email', 'ALERTA: Manutenção preventiva necessária - Veículo {{placa}}', 'ATENÇÃO: O veículo {{placa}} ({{modelo}}) requer manutenção preventiva.\n\nMotivo: {{motivo}}\nQuilometragem atual: {{quilometragem}} km\n\nPor favor, agende a manutenção o quanto antes para evitar problemas.\n\nEquipe RotaLog', true);
 
 -- Notificações de exemplo (histórico)
 INSERT INTO notificacoes (tipo, canal, destinatario, assunto, mensagem, status, tentativas, servico_origem, referencia_id, data_criacao, data_envio, data_atualizacao) VALUES
