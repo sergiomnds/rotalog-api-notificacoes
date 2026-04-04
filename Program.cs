@@ -9,10 +9,19 @@
 
 using Microsoft.EntityFrameworkCore;
 using api_notificacoes.Data;
+using api_notificacoes.Middleware;
 using api_notificacoes.Services;
 using MediatR;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Logging.ClearProviders();
+builder.Logging.AddJsonConsole(options =>
+{
+    options.IncludeScopes = true;
+    options.TimestampFormat = "yyyy-MM-dd'T'HH:mm:ss.fffZ";
+    options.JsonWriterOptions = new System.Text.Json.JsonWriterOptions { Indented = false };
+});
 
 // Add services to the container
 builder.Services.AddControllers();
@@ -69,6 +78,8 @@ app.UseSwaggerUI(c =>
 
 // FIXME: CORS antes de auth (ordem correta, mas permite tudo)
 app.UseCors();
+
+app.UseMiddleware<CorrelationIdMiddleware>();
 
 // FIXME: Sem HTTPS em desenvolvimento
 // app.UseHttpsRedirection();

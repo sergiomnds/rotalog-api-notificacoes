@@ -76,62 +76,65 @@ public class NotificacaoService
     /// FIXME: Lógica de criação e envio acoplada
     /// FIXME: Sem validação adequada
     /// </summary>
-    public async Task<NotificacaoResponse> CriarNotificacao(NotificacaoRequest request)
+    public async Task<NotificacaoResponse> CriarNotificacao(NotificacaoRequest request, string? correlationId = null)
     {
-        // FIXME: Validação inline - deveria usar FluentValidation
-        if (string.IsNullOrEmpty(request.Tipo))
-            throw new ArgumentException("Tipo é obrigatório");
-        if (string.IsNullOrEmpty(request.Destinatario))
-            throw new ArgumentException("Destinatário é obrigatório");
-
-        var mensagemFinal = request.Mensagem;
-        var assuntoFinal = request.Assunto;
-
-        // Tentar usar template se existir
-        if (request.Variaveis != null && request.Variaveis.Count > 0)
+        using (_logger.BeginScope(new Dictionary<string, object> { ["CorrelationId"] = correlationId ?? "" }))
         {
-            var template = await _context.Templates
-                .FirstOrDefaultAsync(t => t.Tipo == request.Tipo 
-                    && t.Canal == (request.Canal ?? "email") 
-                    && t.Ativo);
+            // FIXME: Validação inline - deveria usar FluentValidation
+            if (string.IsNullOrEmpty(request.Tipo))
+                throw new ArgumentException("Tipo é obrigatório");
+            if (string.IsNullOrEmpty(request.Destinatario))
+                throw new ArgumentException("Destinatário é obrigatório");
 
-            if (template != null)
+            var mensagemFinal = request.Mensagem;
+            var assuntoFinal = request.Assunto;
+
+            // Tentar usar template se existir
+            if (request.Variaveis != null && request.Variaveis.Count > 0)
             {
-                mensagemFinal = AplicarTemplate(template.CorpoTemplate, request.Variaveis);
-                if (!string.IsNullOrEmpty(template.AssuntoTemplate))
-                    assuntoFinal = AplicarTemplate(template.AssuntoTemplate, request.Variaveis);
+                var template = await _context.Templates
+                    .FirstOrDefaultAsync(t => t.Tipo == request.Tipo
+                        && t.Canal == (request.Canal ?? "email")
+                        && t.Ativo);
+
+                if (template != null)
+                {
+                    mensagemFinal = AplicarTemplate(template.CorpoTemplate, request.Variaveis);
+                    if (!string.IsNullOrEmpty(template.AssuntoTemplate))
+                        assuntoFinal = AplicarTemplate(template.AssuntoTemplate, request.Variaveis);
+                }
             }
+
+            // Se não tem mensagem e não encontrou template, usar a mensagem do request
+            if (string.IsNullOrEmpty(mensagemFinal))
+                mensagemFinal = request.Mensagem;
+
+            var notificacao = new Notificacao
+            {
+                Tipo = request.Tipo,
+                Canal = request.Canal ?? "email",
+                Destinatario = request.Destinatario,
+                Assunto = assuntoFinal,
+                Mensagem = mensagemFinal,
+                Status = "PENDENTE",
+                ServicoOrigem = request.ServicoOrigem,
+                ReferenciaId = request.ReferenciaId,
+                DataCriacao = DateTime.UtcNow,
+                DataAtualizacao = DateTime.UtcNow
+            };
+
+            _context.Notificacoes.Add(notificacao);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Notificação criada: id={Id}, tipo={Tipo}, canal={Canal}, destinatario={Dest}",
+                notificacao.Id, notificacao.Tipo, notificacao.Canal, notificacao.Destinatario);
+
+            // Tentar enviar imediatamente
+            // FIXME: Envio síncrono - deveria ser assíncrono via fila
+            await TentarEnviar(notificacao, correlationId);
+
+            return MapToResponse(notificacao);
         }
-
-        // Se não tem mensagem e não encontrou template, usar a mensagem do request
-        if (string.IsNullOrEmpty(mensagemFinal))
-            mensagemFinal = request.Mensagem;
-
-        var notificacao = new Notificacao
-        {
-            Tipo = request.Tipo,
-            Canal = request.Canal ?? "email",
-            Destinatario = request.Destinatario,
-            Assunto = assuntoFinal,
-            Mensagem = mensagemFinal,
-            Status = "PENDENTE",
-            ServicoOrigem = request.ServicoOrigem,
-            ReferenciaId = request.ReferenciaId,
-            DataCriacao = DateTime.UtcNow,
-            DataAtualizacao = DateTime.UtcNow
-        };
-
-        _context.Notificacoes.Add(notificacao);
-        await _context.SaveChangesAsync();
-
-        _logger.LogInformation("Notificação criada: {Id} - Tipo: {Tipo} - Canal: {Canal} - Destinatário: {Dest}",
-            notificacao.Id, notificacao.Tipo, notificacao.Canal, notificacao.Destinatario);
-
-        // Tentar enviar imediatamente
-        // FIXME: Envio síncrono - deveria ser assíncrono via fila
-        await TentarEnviar(notificacao);
-
-        return MapToResponse(notificacao);
     }
 
     /// <summary>
@@ -228,48 +231,55 @@ public class NotificacaoService
     /// FIXME: Sem retry com backoff exponencial
     /// FIXME: Sem circuit breaker
     /// </summary>
-    private async Task TentarEnviar(Notificacao notificacao)
+    private async Task TentarEnviar(Notificacao notificacao, string? correlationId = null)
     {
-        try
+        using (_logger.BeginScope(new Dictionary<string, object> { ["CorrelationId"] = correlationId ?? "" }))
         {
-            notificacao.Tentativas++;
-            notificacao.DataAtualizacao = DateTime.UtcNow;
-
-            // FIXME: Envio fake - simula envio com delay
-            if (notificacao.Canal == "email")
+            try
             {
-                await EnviarEmail(notificacao);
+                notificacao.Tentativas++;
+                notificacao.DataAtualizacao = DateTime.UtcNow;
+
+                _logger.LogInformation("Tentando enviar notificação: id={Id}, canal={Canal}, tentativa={Tentativa}",
+                    notificacao.Id, notificacao.Canal, notificacao.Tentativas);
+
+                // FIXME: Envio fake - simula envio com delay
+                if (notificacao.Canal == "email")
+                {
+                    await EnviarEmail(notificacao);
+                }
+                else if (notificacao.Canal == "sms")
+                {
+                    await EnviarSms(notificacao);
+                }
+                else
+                {
+                    throw new NotSupportedException($"Canal não suportado: {notificacao.Canal}");
+                }
+
+                notificacao.Status = "ENVIADO";
+                notificacao.DataEnvio = DateTime.UtcNow;
+
+                _logger.LogInformation("Notificação enviada com sucesso: id={Id}, canal={Canal}, destinatario={Dest}",
+                    notificacao.Id, notificacao.Canal, notificacao.Destinatario);
             }
-            else if (notificacao.Canal == "sms")
+            catch (Exception ex)
             {
-                await EnviarSms(notificacao);
-            }
-            else
-            {
-                throw new NotSupportedException($"Canal não suportado: {notificacao.Canal}");
+                _logger.LogError(ex, "Falha ao enviar notificação: id={Id}, canal={Canal}, erro={Msg}",
+                    notificacao.Id, notificacao.Canal, ex.Message);
+
+                notificacao.ErroMensagem = ex.Message;
+
+                if (notificacao.Tentativas >= notificacao.MaxTentativas)
+                {
+                    notificacao.Status = "FALHA";
+                    _logger.LogWarning("Notificação marcada como FALHA: id={Id}, tentativas={Tentativas}",
+                        notificacao.Id, notificacao.Tentativas);
+                }
             }
 
-            notificacao.Status = "ENVIADO";
-            notificacao.DataEnvio = DateTime.UtcNow;
-
-            _logger.LogInformation("Notificação enviada: {Id} via {Canal} para {Dest}",
-                notificacao.Id, notificacao.Canal, notificacao.Destinatario);
+            await _context.SaveChangesAsync();
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao enviar notificação {Id}: {Msg}", notificacao.Id, ex.Message);
-
-            notificacao.ErroMensagem = ex.Message;
-
-            if (notificacao.Tentativas >= notificacao.MaxTentativas)
-            {
-                notificacao.Status = "FALHA";
-                _logger.LogWarning("Notificação {Id} marcada como FALHA após {Tentativas} tentativas",
-                    notificacao.Id, notificacao.Tentativas);
-            }
-        }
-
-        await _context.SaveChangesAsync();
     }
 
     /// <summary>

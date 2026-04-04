@@ -76,33 +76,40 @@ public class NotificacoesController : ControllerBase
     /// <summary>
     /// Criar e enviar notificação
     /// POST /api/notificacoes
-    /// 
+    ///
     /// Este é o endpoint principal chamado pelo api-frotas e api-entregas
     /// </summary>
     [HttpPost]
     public async Task<IActionResult> Criar([FromBody] NotificacaoRequest request)
     {
-        try
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString();
+        using (_logger.BeginScope(new Dictionary<string, object> { ["CorrelationId"] = correlationId ?? "" }))
         {
-            // FIXME: Validação mínima inline
-            if (string.IsNullOrEmpty(request.Tipo))
-                return BadRequest(new { error = "Campo 'tipo' é obrigatório" });
-            if (string.IsNullOrEmpty(request.Destinatario))
-                return BadRequest(new { error = "Campo 'destinatario' é obrigatório" });
-            if (string.IsNullOrEmpty(request.Mensagem) && (request.Variaveis == null || request.Variaveis.Count == 0))
-                return BadRequest(new { error = "Campo 'mensagem' ou 'variaveis' é obrigatório" });
+            try
+            {
+                _logger.LogInformation("Pedido de notificação recebido: tipo={Tipo}, destinatario={Destinatario}, canal={Canal}",
+                    request.Tipo, request.Destinatario, request.Canal);
 
-            var notificacao = await _service.CriarNotificacao(request);
-            return CreatedAtAction(nameof(BuscarPorId), new { id = notificacao.Id }, notificacao);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao criar notificação");
-            return StatusCode(500, new { error = "Erro ao criar notificação", detalhes = ex.Message });
+                // FIXME: Validação mínima inline
+                if (string.IsNullOrEmpty(request.Tipo))
+                    return BadRequest(new { error = "Campo 'tipo' é obrigatório" });
+                if (string.IsNullOrEmpty(request.Destinatario))
+                    return BadRequest(new { error = "Campo 'destinatario' é obrigatório" });
+                if (string.IsNullOrEmpty(request.Mensagem) && (request.Variaveis == null || request.Variaveis.Count == 0))
+                    return BadRequest(new { error = "Campo 'mensagem' ou 'variaveis' é obrigatório" });
+
+                var notificacao = await _service.CriarNotificacao(request, correlationId);
+                return CreatedAtAction(nameof(BuscarPorId), new { id = notificacao.Id }, notificacao);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao criar notificação");
+                return StatusCode(500, new { error = "Erro ao criar notificação", detalhes = ex.Message });
+            }
         }
     }
 
