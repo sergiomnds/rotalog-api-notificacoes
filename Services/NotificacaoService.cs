@@ -65,7 +65,7 @@ public class NotificacaoService
     /// <summary>
     /// Buscar notificação por ID
     /// </summary>
-    public async Task<NotificacaoResponse?> BuscarPorId(long id)
+    public virtual async Task<NotificacaoResponse?> BuscarPorId(long id)
     {
         var notificacao = await _context.Notificacoes.FindAsync(id);
         return notificacao != null ? MapToResponse(notificacao) : null;
@@ -76,7 +76,7 @@ public class NotificacaoService
     /// FIXME: Lógica de criação e envio acoplada
     /// FIXME: Sem validação adequada
     /// </summary>
-    public async Task<NotificacaoResponse> CriarNotificacao(NotificacaoRequest request)
+    public virtual async Task<NotificacaoResponse> CriarNotificacao(NotificacaoRequest request)
     {
         // FIXME: Validação inline - deveria usar FluentValidation
         if (string.IsNullOrEmpty(request.Tipo))
@@ -138,7 +138,7 @@ public class NotificacaoService
     /// Reenviar notificação que falhou
     /// FIXME: Sem verificação de max tentativas
     /// </summary>
-    public async Task<NotificacaoResponse?> ReenviarNotificacao(long id, ReenvioRequest? request = null)
+    public virtual async Task<NotificacaoResponse?> ReenviarNotificacao(long id, ReenvioRequest? request = null)
     {
         var notificacao = await _context.Notificacoes.FindAsync(id);
         if (notificacao == null)

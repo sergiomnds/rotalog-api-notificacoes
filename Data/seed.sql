@@ -13,6 +13,7 @@ INSERT INTO templates_notificacao (tipo, canal, assunto_template, corpo_template
 ('ENTREGA_ATRASADA', 'email', 'ALERTA: Entrega atrasada - {{numero_pedido}}', 'ATENÇÃO: A entrega {{numero_pedido}} está atrasada.\n\nDestino: {{destino}}\nTempo estimado: {{tempo_estimado}} min\n\nVerifique a situação imediatamente.\n\nEquipe RotaLog', true),
 ('CNH_VENCIDA', 'email', 'ALERTA: CNH vencida - Motorista {{nome}}', 'ATENÇÃO: A CNH do motorista {{nome}} está vencida.\n\nVencimento: {{data_vencimento}}\nCNH: {{numero_cnh}}\n\nO motorista deve ser afastado até regularização.\n\nEquipe RotaLog', true),
 ('VEICULO_DESATIVADO', 'email', 'Veículo desativado: {{placa}}', 'O veículo {{placa}} foi desativado no sistema.\n\nMotivo: {{motivo}}\nData: {{data}}\n\nEquipe RotaLog', true),
+('ALERTA_MANUTENCAO_PREVENTIVA', 'email', 'ALERTA: Manutenção preventiva - Veículo {{placa}}', E'{{mensagem}}\n\nVeículo: {{placa}}\nCritério: {{motivo}}\n\nEquipe RotaLog', true),
 ('ALERTA_MANUTENCAO', 'sms', NULL, 'RotaLog: Manutenção agendada para veículo {{placa}} em {{data_agendada}}. Verifique o sistema.', true),
 ('ENTREGA_CONCLUIDA', 'sms', NULL, 'RotaLog: Sua entrega {{numero_pedido}} foi entregue com sucesso!', true);
 

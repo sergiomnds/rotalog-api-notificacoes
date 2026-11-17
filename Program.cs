@@ -1,6 +1,6 @@
 /**
  * RotaLog - API Notificações
- * Notification microservice (.NET Core 6)
+ * Notification microservice (.NET 10)
  * 
  * Legacy codebase with Clean Architecture abandoned in the middle
  * MediatR configured but not used, god class service
@@ -19,7 +19,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.OpenApiInfo
     {
         Title = "RotaLog - API Notificações",
         Version = "v1",
@@ -35,10 +35,11 @@ builder.Services.AddDbContext<NotificacoesDbContext>(options =>
     ));
 
 // FIXME: MediatR registrado mas não utilizado (Clean Architecture abandonada)
-builder.Services.AddMediatR(typeof(Program));
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
 
 // FIXME: Registrando classe concreta em vez de interface
 builder.Services.AddScoped<NotificacaoService>();
+builder.Services.AddScoped<AlertaManutencaoService>();
 
 // FIXME: CORS permite tudo
 builder.Services.AddCors(options =>
@@ -105,6 +106,7 @@ Console.WriteLine("  GET    /api/health");
 Console.WriteLine("  GET    /api/notificacoes");
 Console.WriteLine("  GET    /api/notificacoes/{id}");
 Console.WriteLine("  POST   /api/notificacoes");
+Console.WriteLine("  POST   /api/notificacoes/alertas-manutencao");
 Console.WriteLine("  POST   /api/notificacoes/{id}/reenviar");
 Console.WriteLine("  GET    /api/notificacoes/stats");
 Console.WriteLine("  GET    /api/notificacoes/templates");

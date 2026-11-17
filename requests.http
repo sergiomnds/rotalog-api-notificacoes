@@ -244,6 +244,29 @@ GET http://localhost:5000/api/notificacoes?servicoOrigem=api-frotas&tipo=VEICULO
 GET http://localhost:5000/api/notificacoes/stats
 
 ### ===========================================
+### ALERTA DE MANUTENÇÃO PREVENTIVA (chamado pela api-frotas)
+### ===========================================
+
+### Enviar alerta (201 se o e-mail foi enviado, 200 se já havia sido, 503 se não foi enviado agora)
+POST http://localhost:5000/api/notificacoes/alertas-manutencao
+Content-Type: application/json
+
+{
+    "alertaId": 1,
+    "veiculoId": 3,
+    "placa": "ABC1D23",
+    "motivo": "QUILOMETRAGEM",
+    "destinatario": "gestor@rotalog.com",
+    "mensagem": "Veículo ABC1D23 ultrapassou 10000 km desde a última manutenção. Agendar manutenção preventiva."
+}
+
+### Pedido inválido (400)
+POST http://localhost:5000/api/notificacoes/alertas-manutencao
+Content-Type: application/json
+
+{ "alertaId": 1 }
+
+### ===========================================
 ### SWAGGER UI
 ### ===========================================
 
